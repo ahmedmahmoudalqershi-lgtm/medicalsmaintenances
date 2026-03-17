@@ -1019,9 +1019,13 @@ app.use(express.static('public'));
 
 
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+// ابحث عن السطر الذي يبدأ بـ app.listen واستبدله بهذا:
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running on port ${PORT}`);
 });
+
 
 
 
