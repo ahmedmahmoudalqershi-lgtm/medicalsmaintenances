@@ -3,63 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل في نظام الصيانة الطبية</title>
+    <title>AWON | عون - صيانة الأجهزة الطبية</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .register-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); width: 350px; }
-        h2 { color: #007bff; text-align: center; }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #0056b3; }
-        #message { margin-top: 15px; text-align: center; font-size: 14px; }
+        /* إعدادات عامة */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        body {
+            /* تدرج لوني مشابه للصورة (أزرق داكن إلى تركواز فاتح) */
+            background: linear-gradient(180deg, #101827 0%, #1e3a50 50%, #689f9e 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* تصميم الشريط العلوي (Header) */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 5%;
+            background: rgba(255, 255, 255, 0.05); /* خلفية شبه شفافة */
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo span {
+            color: #14a098; /* لون العلامة التجارية */
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .login-btn {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .login-btn:hover {
+            color: #14a098;
+        }
+
+        .get-started-btn {
+            background-color: #14a098;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .get-started-btn:hover {
+            background-color: #0f7a73;
+        }
+
+        /* تصميم القسم الرئيسي (Hero Section) */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 50px 5%;
+            max-width: 900px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(20, 160, 152, 0.15);
+            border: 1px solid rgba(20, 160, 152, 0.3);
+            color: #5eead4;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            width: fit-content;
+            gap: 8px;
+        }
+
+        .badge .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #5eead4;
+            border-radius: 50%;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+
+        h1 .highlight {
+            color: #14a098; /* الكلمة المميزة باللون التركواز */
+        }
+
+        p.description {
+            font-size: 1.2rem;
+            color: #cbd5e1; /* رمادي فاتح */
+            line-height: 1.7;
+            max-width: 700px;
+            margin-bottom: 40px;
+        }
+
+        /* تصميم أزرار الدعوة للإجراء (CTA Buttons) */
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background-color: #14a098;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #0f7a73;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1rem;
+            border: 2px solid white;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .btn-outline:hover {
+            background-color: white;
+            color: #101827;
+        }
+
+        /* توافقية مع الشاشات الصغيرة (الهواتف) */
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            p.description { font-size: 1rem; }
+            .cta-buttons { flex-direction: column; }
+            .btn-primary, .btn-outline { width: 100%; text-align: center; justify-content: center; }
+            header { padding: 15px 5%; }
+            .logo { font-size: 20px; }
+        }
     </style>
 </head>
 <body>
 
-<div class="register-container">
-    <h2>إنشاء حساب جديد 🏥</h2>
-    <form id="registerForm">
-        <input type="email" id="email" placeholder="البريد الإلكتروني" required>
-        <input type="password" id="password" placeholder="كلمة المرور" required>
-        <select id="role">
-            <option value="hospital">مستشفى</option>
-            <option value="engineer">مهندس صيانة</option>
-        </select>
-        <button type="submit">تسجيل الحساب</button>
-    </form>
-    <div id="message"></div>
-</div>
+    <header>
+        <div class="logo">
+            AWON <span>|</span> عون
+        </div>
+        <div class="nav-actions">
+            <a href="login.html" class="login-btn">تسجيل الدخول</a>
+            <a href="register.html" class="get-started-btn">ابدأ الآن</a>
+        </div>
+    </header>
 
-<script>
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const messageDiv = document.getElementById('message');
-        const data = {
-            email: document.getElementById('email').value,
-            password: document.getElementById('password').value,
-            role: document.getElementById('role').value
-        };
-
-        try {
-            const response = await fetch('/api/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-            if (response.ok) {
-                messageDiv.style.color = 'green';
-                messageDiv.innerText = 'تم التسجيل بنجاح! جاري التحويل...';
-            } else {
-                messageDiv.style.color = 'red';
-                messageDiv.innerText = 'خطأ: ' + result.error;
-            }
-        } catch (err) {
-            messageDiv.innerText = 'فشل الاتصال بالسيرفر';
-        }
-    });
-</script>
+    <main>
+        <div class="badge">
+            <span class="dot"></span> معتمد من مؤسسات الرعاية الصحية الرائدة
+        </div>
+        
+        <h1>صيانة الأجهزة الطبية،<br><span class="highlight">أصبحت أسهل</span></h1>
+        
+        <p class="description">
+            يربط نظامنا المستشفيات بمهندسين طبيين معتمدين لإجراء الصيانة الطارئة والمجدولة للأجهزة الطبية — لضمان سلامة المرضى دائماً.
+        </p>
+        
+        <div class="cta-buttons">
+            <a href="register.html" class="btn-primary">
+                تسجيل كمستشفى ←
+            </a>
+            <a href="register.html" class="btn-outline">
+                انضم كمهندس
+            </a>
+        </div>
+    </main>
 
 </body>
 </html>
