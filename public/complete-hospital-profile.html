@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>إكمال بيانات المستشفى</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; background: #f4f4f4; }
+        input, textarea, button { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h2>بيانات المستشفى</h2>
+    <form id="profileForm" enctype="multipart/form-data">
+        <input type="text" id="hospital_name" placeholder="اسم المستشفى" required>
+        <input type="text" id="address" placeholder="العنوان" required>
+        <input type="text" id="city" placeholder="المدينة" required>
+        <input type="tel" id="phone" placeholder="رقم الهاتف" required>
+        <label>السجل التجاري (PDF أو صورة)</label>
+        <input type="file" id="commercial_registration" accept=".pdf,.jpg,.jpeg,.png">
+        <button type="submit">حفظ</button>
+    </form>
+    <div id="message"></div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = 'login.html';
+
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('hospital_name', document.getElementById('hospital_name').value);
+            formData.append('address', document.getElementById('address').value);
+            formData.append('city', document.getElementById('city').value);
+            formData.append('phone', document.getElementById('phone').value);
+            const fileInput = document.getElementById('commercial_registration');
+            if (fileInput.files[0]) formData.append('commercial_registration', fileInput.files[0]);
+
+            try {
+                const res = await fetch('/api/hospital/profile', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('message').innerHTML = '<span class="success">تم حفظ البيانات بنجاح</span>';
+                    setTimeout(() => { window.location.href = 'dashboard-hospital.html'; }, 2000);
+                } else {
+                    document.getElementById('message').innerHTML = `<span class="error">${data.error}</span>`;
+                }
+            } catch (err) {
+                document.getElementById('message').innerHTML = '<span class="error">حدث خطأ في الاتصال</span>';
+            }
+        });
+
+        // جلب البيانات الحالية إن وجدت
+        async function loadProfile() {
+            const res = await fetch('/api/hospital/profile', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data && !data.error) {
+                document.getElementById('hospital_name').value = data.hospital_name || '';
+                document.getElementById('address').value = data.address || '';
+                document.getElementById('city').value = data.city || '';
+                document.getElementById('phone').value = data.phone || '';
+            }
+        }
+        loadProfile();
+    </script>
+</body>
+</html>

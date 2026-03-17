@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم المستشفى</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; background: #f5f7fa; }
+        .navbar { background: #2c3e50; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .navbar .logo { font-weight: bold; font-size: 1.2rem; }
+        .navbar .links a { color: white; margin-left: 1.5rem; text-decoration: none; cursor: pointer; }
+        .navbar .links a:hover { text-decoration: underline; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .tab-content { display: none; background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
+        h2 { margin-top: 0; color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #ddd; }
+        th { background-color: #3498db; color: white; }
+        tr:hover { background-color: #f5f5f5; }
+        .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem; margin: 5px; }
+        .btn-danger { background: #e74c3c; }
+        .btn-success { background: #2ecc71; }
+        .btn-warning { background: #f39c12; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 8px; }
+        .close { color: #aaa; float: left; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .notification-badge { background: #e74c3c; color: white; border-radius: 50%; padding: 2px 6px; font-size: 0.8rem; margin-right: 5px; }
+        .error { color: red; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">نظام صيانة الأجهزة الطبية - مستشفى</div>
+        <div class="links">
+            <a onclick="showTab('devices')">الأجهزة</a>
+            <a onclick="showTab('requests')">طلبات الصيانة</a>
+            <a onclick="showTab('bids')">العروض المقدمة</a>
+            <a onclick="showTab('notifications')">الإشعارات <span id="notifCount" class="notification-badge" style="display:none;">0</span></a>
+            <a onclick="logout()">تسجيل خروج</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- قسم الأجهزة -->
+        <div id="tab-devices" class="tab-content active">
+            <h2>إدارة الأجهزة</h2>
+            <button class="btn btn-success" onclick="openDeviceModal()">إضافة جهاز جديد</button>
+            <div id="devicesList"></div>
+        </div>
+
+        <!-- قسم طلبات الصيانة -->
+        <div id="tab-requests" class="tab-content">
+            <h2>طلبات الصيانة</h2>
+            <button class="btn btn-success" onclick="openRequestModal()">طلب صيانة جديد</button>
+            <div id="requestsList"></div>
+        </div>
+
+        <!-- قسم العروض -->
+        <div id="tab-bids" class="tab-content">
+            <h2>العروض المقدمة على طلباتي</h2>
+            <div id="bidsList"></div>
+        </div>
+
+        <!-- قسم الإشعارات -->
+        <div id="tab-notifications" class="tab-content">
+            <h2>الإشعارات</h2>
+            <div id="notificationsList"></div>
+        </div>
+    </div>
+
+    <!-- مودال إضافة/تعديل جهاز -->
+    <div id="deviceModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDeviceModal()">&times;</span>
+            <h3 id="deviceModalTitle">إضافة جهاز</h3>
+            <form id="deviceForm">
+                <input type="hidden" id="deviceId">
+                <div class="form-group">
+                    <label>اسم الجهاز</label>
+                    <input type="text" id="device_name" required>
+                </div>
+                <div class="form-group">
+                    <label>الموديل</label>
+                    <input type="text" id="model" required>
+                </div>
+                <div class="form-group">
+                    <label>الرقم التسلسلي</label>
+                    <input type="text" id="serial_number" required>
+                </div>
+                <div class="form-group">
+                    <label>الشركة المصنعة</label>
+                    <input type="text" id="manufacturer" required>
+                </div>
+                <div class="form-group">
+                    <label>آخر تاريخ صيانة</label>
+                    <input type="date" id="last_maintenance_date">
+                </div>
+                <div class="form-group">
+                    <label>الحالة</label>
+                    <select id="status">
+                        <option value="operational">يعمل</option>
+                        <option value="needs_maintenance">يحتاج صيانة</option>
+                        <option value="under_repair">قيد الإصلاح</option>
+                        <option value="decommissioned">متقادم</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>التخصص (اختياري)</label>
+                    <input type="text" id="specialization" value="general">
+                </div>
+                <button type="submit" class="btn">حفظ</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال إضافة طلب صيانة -->
+    <div id="requestModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRequestModal()">&times;</span>
+            <h3>طلب صيانة جديد</h3>
+            <form id="requestForm">
+                <div class="form-group">
+                    <label>الجهاز</label>
+                    <select id="request_device_id" required>
+                        <option value="">اختر جهازاً</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>عنوان الطلب</label>
+                    <input type="text" id="request_title" required>
+                </div>
+                <div class="form-group">
+                    <label>وصف المشكلة</label>
+                    <textarea id="request_description" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>درجة الاستعجال</label>
+                    <select id="request_urgency">
+                        <option value="low">منخفض</option>
+                        <option value="medium" selected>متوسط</option>
+                        <option value="high">عالٍ</option>
+                        <option value="critical">حرج</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">إرسال الطلب</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال عرض العروض على طلب معين -->
+    <div id="bidsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBidsModal()">&times;</span>
+            <h3>العروض المقدمة</h3>
+            <div id="bidsModalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = 'login.html';
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // ------------------- الأجهزة -------------------
+        async function loadDevices() {
+            try {
+                const res = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
+                const devices = await res.json();
+                let html = '<table><tr><th>الاسم</th><th>الموديل</th><th>الرقم التسلسلي</th><th>الحالة</th><th>آخر صيانة</th><th>إجراءات</th></tr>';
+                if (devices.length === 0) html += '<tr><td colspan="6">لا توجد أجهزة مسجلة</td></tr>';
+                devices.forEach(d => {
+                    html += `<tr>
+                        <td>${d.device_name}</td>
+                        <td>${d.model}</td>
+                        <td>${d.serial_number}</td>
+                        <td>${d.status}</td>
+                        <td>${d.last_maintenance_date || '-'}</td>
+                        <td>
+                            <button class="btn btn-warning" onclick="editDevice(${d.id})">تعديل</button>
+                            <button class="btn btn-danger" onclick="deleteDevice(${d.id})">حذف</button>
+                        </td>
+                    </tr>`;
+                });
+                html += '</table>';
+                document.getElementById('devicesList').innerHTML = html;
+            } catch (err) {
+                document.getElementById('devicesList').innerHTML = '<div class="error">فشل تحميل الأجهزة</div>';
+            }
+        }
+
+        function openDeviceModal() {
+            document.getElementById('deviceModalTitle').innerText = 'إضافة جهاز';
+            document.getElementById('deviceId').value = '';
+            document.getElementById('device_name').value = '';
+            document.getElementById('model').value = '';
+            document.getElementById('serial_number').value = '';
+            document.getElementById('manufacturer').value = '';
+            document.getElementById('last_maintenance_date').value = '';
+            document.getElementById('status').value = 'operational';
+            document.getElementById('specialization').value = 'general';
+            document.getElementById('deviceModal').style.display = 'block';
+        }
+
+        function closeDeviceModal() {
+            document.getElementById('deviceModal').style.display = 'none';
+        }
+
+        async function editDevice(id) {
+            try {
+                const res = await fetch(`/api/devices`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const devices = await res.json();
+                const device = devices.find(d => d.id === id);
+                if (device) {
+                    document.getElementById('deviceModalTitle').innerText = 'تعديل جهاز';
+                    document.getElementById('deviceId').value = device.id;
+                    document.getElementById('device_name').value = device.device_name;
+                    document.getElementById('model').value = device.model;
+                    document.getElementById('serial_number').value = device.serial_number;
+                    document.getElementById('manufacturer').value = device.manufacturer;
+                    document.getElementById('last_maintenance_date').value = device.last_maintenance_date || '';
+                    document.getElementById('status').value = device.status;
+                    document.getElementById('specialization').value = device.specialization;
+                    document.getElementById('deviceModal').style.display = 'block';
+                }
+            } catch (err) {
+                alert('خطأ في جلب بيانات الجهاز');
+            }
+        }
+
+        async function deleteDevice(id) {
+            if (!confirm('هل أنت متأكد من حذف هذا الجهاز؟')) return;
+            try {
+                const res = await fetch(`/api/devices/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    loadDevices();
+                } else {
+                    alert('فشل الحذف');
+                }
+            } catch (err) {
+                alert('خطأ في الاتصال');
+            }
+        }
+
+        document.getElementById('deviceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('deviceId').value;
+            const deviceData = {
+                device_name: document.getElementById('device_name').value,
+                model: document.getElementById('model').value,
+                serial_number: document.getElementById('serial_number').value,
+                manufacturer: document.getElementById('manufacturer').value,
+                last_maintenance_date: document.getElementById('last_maintenance_date').value || null,
+                status: document.getElementById('status').value,
+                specialization: document.getElementById('specialization').value
+            };
+
+            let url = '/api/devices';
+            let method = 'POST';
+            if (id) {
+                url = `/api/devices/${id}`;
+                method = 'PUT';
+            }
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(deviceData)
+                });
+                if (res.ok) {
+                    closeDeviceModal();
+                    loadDevices();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'فشل العملية');
+                }
+            } catch (err) {
+                alert('خطأ في الاتصال');
+            }
+        });
+
+        // ------------------- طلبات الصيانة -------------------
+        async function loadRequests() {
+            try {
+                const res = await fetch('/api/requests/hospital', { headers: { 'Authorization': `Bearer ${token}` } });
+                const requests = await res.json();
+                let html = '<table><tr><th>الجهاز</th><th>العنوان</th><th>الحالة</th><th>الاستعجال</th><th>التاريخ</th><th>المهندس</th><th>إجراءات</th></tr>';
+                if (requests.length === 0) html += '<tr><td colspan="7">لا توجد طلبات</td></tr>';
+                requests.forEach(r => {
+                    html += `<tr>
+                        <td>${r.device_name || `جهاز رقم ${r.device_id}`}</td>
+                        <td>${r.title}</td>
+                        <td>${r.status}</td>
+                        <td>${r.urgency}</td>
+                        <td>${new Date(r.created_at).toLocaleDateString('ar-EG')}</td>
+                        <td>${r.assigned_engineer_id ? 'تم التعيين' : 'غير معين'}</td>
+                        <td>
+                            <button class="btn" onclick="viewRequestBids(${r.id})">عرض العروض</button>
+                        </td>
+                    </tr>`;
+                });
+                html += '</table>';
+                document.getElementById('requestsList').innerHTML = html;
+            } catch (err) {
+                document.getElementById('requestsList').innerHTML = '<div class="error">فشل تحميل الطلبات</div>';
+            }
+        }
+
+        async function openRequestModal() {
+            try {
+                const res = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
+                const devices = await res.json();
+                let options = '<option value="">اختر جهازاً</option>';
+                devices.forEach(d => {
+                    options += `<option value="${d.id}">${d.device_name} (${d.model})</option>`;
+                });
+                document.getElementById('request_device_id').innerHTML = options;
+                document.getElementById('requestModal').style.display = 'block';
+            } catch (err) {
+                alert('فشل تحميل قائمة الأجهزة');
+            }
+        }
+
+        function closeRequestModal() {
+            document.getElementById('requestModal').style.display = 'none';
+        }
+
+        document.getElementById('requestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const requestData = {
+                device_id: document.getElementById('request_device_id').value,
+                title: document.getElementById('request_title').value,
+                description: document.getElementById('request_description').value,
+                urgency: document.getElementById('request_urgency').value
+            };
+            try {
+                const res = await fetch('/api/requests', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+                if (res.ok) {
+                    closeRequestModal();
+                    loadRequests();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'فشل إنشاء الطلب');
+                }
+            } catch (err) {
+                alert('خطأ في الاتصال');
+            }
+        });
+
+        // ------------------- العروض -------------------
+        async function viewRequestBids(requestId) {
+            try {
+                const res = await fetch(`/api/requests/${requestId}/bids`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const bids = await res.json();
+                let html = '';
+                if (bids.length === 0) {
+                    html = '<p>لا توجد عروض حتى الآن</p>';
+                } else {
+                    html = '<table><tr><th>المهندس</th><th>السعر</th><th>الأيام المقدرة</th><th>الوصف</th><th>التقييم</th><th>إجراءات</th></tr>';
+                    bids.forEach(b => {
+                        html += `<tr>
+                            <td>${b.full_name}</td>
+                            <td>${b.price}</td>
+                            <td>${b.estimated_days}</td>
+                            <td>${b.description || '-'}</td>
+                            <td>${b.rating ? b.rating.toFixed(1) : 'جديد'}</td>
+                            <td>
+                                ${b.status === 'pending' ? 
+                                    `<button class="btn btn-success" onclick="acceptBid(${b.id})">قبول</button>
+                                     <button class="btn btn-danger" onclick="rejectBid(${b.id})">رفض</button>` : 
+                                    b.status}
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                }
+                document.getElementById('bidsModalContent').innerHTML = html;
+                document.getElementById('bidsModal').style.display = 'block';
+            } catch (err) {
+                alert('فشل تحميل العروض');
+            }
+        }
+
+        async function acceptBid(bidId) {
+            if (!confirm('هل أنت متأكد من قبول هذا العرض؟')) return;
+            try {
+                const res = await fetch(`/api/bids/${bidId}/accept`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    alert('تم قبول العرض وتعيين المهندس');
+                    closeBidsModal();
+                    loadRequests();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'فشل قبول العرض');
+                }
+            } catch (err) {
+                alert('خطأ في الاتصال');
+            }
+        }
+
+        async function rejectBid(bidId) {
+            if (!confirm('هل أنت متأكد من رفض هذا العرض؟')) return;
+            try {
+                const res = await fetch(`/api/bids/${bidId}/reject`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    alert('تم رفض العرض');
+                    closeBidsModal();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'فشل رفض العرض');
+                }
+            } catch (err) {
+                alert('خطأ في الاتصال');
+            }
+        }
+
+        function closeBidsModal() {
+            document.getElementById('bidsModal').style.display = 'none';
+        }
+
+        // ------------------- الإشعارات -------------------
+        async function loadNotifications() {
+            try {
+                const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+                const notifs = await res.json();
+                let html = '';
+                if (notifs.length === 0) html = '<p>لا توجد إشعارات</p>';
+                else {
+                    html = '<ul style="list-style: none; padding: 0;">';
+                    notifs.forEach(n => {
+                        html += `<li style="background: ${n.is_read ? '#f0f0f0' : '#fff3cd'}; margin: 10px 0; padding: 10px; border-radius: 5px;">
+                            <strong>${n.type}</strong> - ${n.message} <br>
+                            <small>${new Date(n.created_at).toLocaleString('ar-EG')}</small>
+                            ${!n.is_read ? `<button class="btn" onclick="markNotificationRead(${n.id})">تحديد كمقروء</button>` : ''}
+                        </li>`;
+                    });
+                    html += '</ul>';
+                }
+                document.getElementById('notificationsList').innerHTML = html;
+
+                const unread = notifs.filter(n => !n.is_read).length;
+                const notifCountSpan = document.getElementById('notifCount');
+                if (unread > 0) {
+                    notifCountSpan.innerText = unread;
+                    notifCountSpan.style.display = 'inline';
+                } else {
+                    notifCountSpan.style.display = 'none';
+                }
+            } catch (err) {
+                document.getElementById('notificationsList').innerHTML = '<div class="error">فشل تحميل الإشعارات</div>';
+            }
+        }
+
+        async function markNotificationRead(id) {
+            try {
+                await fetch(`/api/notifications/${id}/read`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                loadNotifications();
+            } catch (err) {
+                alert('فشل تحديث الإشعار');
+            }
+        }
+
+async function loadAllBids() {
+    const bidsList = document.getElementById('bidsList');
+    bidsList.innerHTML = 'جاري التحميل...';
+    
+    try {
+        // ملاحظة: تأكد أن هذا المسار موجود في السيرفر لديك
+        const res = await fetch('/api/bids/hospital', { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        const bids = await res.json();
+        
+        if (bids.length === 0) {
+            bidsList.innerHTML = '<p>لا توجد عروض مقدمة على طلباتك حتى الآن.</p>';
+            return;
+        }
+
+        let html = '<table><tr><th>الجهاز</th><th>المهندس</th><th>السعر</th><th>الأيام</th><th>الحالة</th><th>إجراءات</th></tr>';
+        bids.forEach(b => {
+            html += `<tr>
+                <td>${b.device_name || 'جهاز'}</td>
+                <td>${b.full_name}</td>
+                <td>${b.price}</td>
+                <td>${b.estimated_days}</td>
+                <td>${b.status}</td>
+                <td>
+                    <button class="btn btn-success" onclick="acceptBid(${b.id})">قبول</button>
+                </td>
+            </tr>`;
+        });
+        html += '</table>';
+        bidsList.innerHTML = html;
+    } catch (err) {
+        bidsList.innerHTML = '<div class="error">فشل تحميل العروض الشاملة</div>';
+    }
+}
+
+
+
+
+
+
+
+
+
+        // ------------------- التحميل الأولي -------------------
+        loadDevices();
+        loadRequests();
+        loadNotifications();
+        setInterval(loadNotifications, 30000);
+    </script>
+</body>
+</html>

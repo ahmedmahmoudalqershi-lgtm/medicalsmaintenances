@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>إكمال بيانات المهندس</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; background: #f4f4f4; }
+        input, textarea, button, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h2>بيانات المهندس</h2>
+    <form id="profileForm" enctype="multipart/form-data">
+        <input type="text" id="full_name" placeholder="الاسم الكامل" required>
+        <input type="tel" id="phone" placeholder="رقم الهاتف" required>
+        <input type="text" id="specialization" placeholder="التخصص (مثل: أجهزة تخدير، أشعة)" required>
+        <input type="number" id="years_experience" placeholder="سنوات الخبرة" min="0" value="0">
+        
+        <label>شهادة الخبرة (PDF أو صورة)</label>
+        <input type="file" id="certification" accept=".pdf,.jpg,.jpeg,.png">
+        
+        <label>صورة الهوية الوطنية (PDF أو صورة)</label>
+        <input type="file" id="national_id" accept=".pdf,.jpg,.jpeg,.png">
+        
+        <button type="submit">حفظ</button>
+    </form>
+    <div id="message"></div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = 'login.html';
+
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('full_name', document.getElementById('full_name').value);
+            formData.append('phone', document.getElementById('phone').value);
+            formData.append('specialization', document.getElementById('specialization').value);
+            formData.append('years_experience', document.getElementById('years_experience').value);
+
+            const certFile = document.getElementById('certification').files[0];
+            if (certFile) formData.append('certification', certFile);
+
+            const nationalFile = document.getElementById('national_id').files[0];
+            if (nationalFile) formData.append('national_id', nationalFile);
+
+            try {
+                const res = await fetch('/api/engineer/profile', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('message').innerHTML = '<span class="success">تم حفظ البيانات بنجاح</span>';
+                    setTimeout(() => { window.location.href = 'dashboard-engineer.html'; }, 2000);
+                } else {
+                    document.getElementById('message').innerHTML = `<span class="error">${data.error}</span>`;
+                }
+            } catch (err) {
+                document.getElementById('message').innerHTML = '<span class="error">حدث خطأ في الاتصال</span>';
+            }
+        });
+
+        // جلب البيانات الحالية إن وجدت
+        async function loadProfile() {
+            const res = await fetch('/api/engineer/profile', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data && !data.error) {
+                document.getElementById('full_name').value = data.full_name || '';
+                document.getElementById('phone').value = data.phone || '';
+                document.getElementById('specialization').value = data.specialization || '';
+                document.getElementById('years_experience').value = data.years_experience || 0;
+            }
+        }
+        loadProfile();
+    </script>
+</body>
+</html>

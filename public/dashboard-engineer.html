@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم المهندس</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; background: #f5f7fa; }
+        .navbar { background: #2c3e50; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .navbar .logo { font-weight: bold; font-size: 1.2rem; }
+        .navbar .links a { color: white; margin-left: 1.5rem; text-decoration: none; cursor: pointer; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .tab-content { display: none; background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
+        h2 { margin-top: 0; color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #ddd; }
+        th { background-color: #3498db; color: white; }
+        tr:hover { background-color: #f5f5f5; }
+        .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem; margin: 5px; }
+        .btn-success { background: #2ecc71; }
+        .btn-warning { background: #f39c12; }
+        .btn-danger { background: #e74c3c; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 8px; }
+        .close { color: #aaa; float: left; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .notification-badge { background: #e74c3c; color: white; border-radius: 50%; padding: 2px 6px; font-size: 0.8rem; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">نظام صيانة الأجهزة الطبية - مهندس</div>
+        <div class="links">
+            <a onclick="showTab('openRequests')">طلبات مفتوحة</a>
+            <a onclick="showTab('myRequests')">طلباتي المعينة</a>
+            <a onclick="showTab('myBids')">عروضي</a>
+            <a onclick="showTab('notifications')">الإشعارات <span id="notifCount" class="notification-badge" style="display:none;">0</span></a>
+            <a onclick="logout()">تسجيل خروج</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- الطلبات المفتوحة -->
+        <div id="tab-openRequests" class="tab-content active">
+            <h2>طلبات صيانة مفتوحة (يمكنك التقديم)</h2>
+            <div id="openRequestsList"></div>
+        </div>
+
+        <!-- طلباتي المعينة -->
+        <div id="tab-myRequests" class="tab-content">
+            <h2>طلبات الصيانة الموكلة إليّ</h2>
+            <div id="myRequestsList"></div>
+        </div>
+
+        <!-- عروضي -->
+        <div id="tab-myBids" class="tab-content">
+            <h2>عروضي المقدمة</h2>
+            <div id="myBidsList"></div>
+        </div>
+
+        <!-- الإشعارات -->
+        <div id="tab-notifications" class="tab-content">
+            <h2>الإشعارات</h2>
+            <div id="notificationsList"></div>
+        </div>
+    </div>
+
+    <!-- مودال تقديم عرض -->
+    <div id="bidModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBidModal()">&times;</span>
+            <h3>تقديم عرض على الطلب</h3>
+            <form id="bidForm">
+                <input type="hidden" id="bid_request_id">
+                <div class="form-group">
+                    <label>السعر (بالعملة المحلية)</label>
+                    <input type="number" id="bid_price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>الأيام المقدرة للإنجاز</label>
+                    <input type="number" id="bid_estimated_days" required>
+                </div>
+                <div class="form-group">
+                    <label>وصف العرض (اختياري)</label>
+                    <textarea id="bid_description" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">إرسال العرض</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال تحديث حالة الطلب -->
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeStatusModal()">&times;</span>
+            <h3>تحديث حالة الطلب</h3>
+            <form id="statusForm">
+                <input type="hidden" id="status_request_id">
+                <div class="form-group">
+                    <label>الحالة الجديدة</label>
+                    <select id="new_status">
+                        <option value="in_progress">قيد التنفيذ</option>
+                        <option value="completed">مكتمل</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">تحديث</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = 'login.html';
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // تحميل الطلبات المفتوحة
+        async function loadOpenRequests() {
+            try {
+                const res = await fetch('/api/requests/open', { headers: { 'Authorization': `Bearer ${token}` } });
+                const requests = await res.json();
+                let html = '<table><tr><th>المستشفى</th><th>الجهاز</th><th>العنوان</th><th>الاستعجال</th><th>التخصص</th><th>تاريخ الطلب</th><th>إجراءات</th></tr>';
+                if (requests.length === 0) html += '<tr><td colspan="7">لا توجد طلبات مفتوحة حالياً</td></tr>';
+                requests.forEach(r => {
+                    html += `<tr>
+                        <td>${r.hospital_name}</td>
+                        <td>${r.device_name} (${r.model})</td>
+                        <td>${r.title}</td>
+                        <td>${r.urgency}</td>
+                        <td>${r.specialization}</td>
+                        <td>${new Date(r.created_at).toLocaleDateString('ar-EG')}</td>
+                        <td><button class="btn btn-success" onclick="openBidModal(${r.id})">تقديم عرض</button></td>
+                    </tr>`;
+                });
+                html += '</table>';
+                document.getElementById('openRequestsList').innerHTML = html;
+            } catch (err) {
+                document.getElementById('openRequestsList').innerHTML = '<div class="error">فشل تحميل الطلبات</div>';
+            }
+        }
+
+        // تحميل الطلبات المعينة للمهندس
+        async function loadMyRequests() {
+            try {
+                const res = await fetch('/api/requests/engineer', { headers: { 'Authorization': `Bearer ${token}` } });
+                const requests = await res.json();
+                let html = '<table><tr><th>المستشفى</th><th>الجهاز</th><th>العنوان</th><th>الحالة</th><th>الاستعجال</th><th>تاريخ الطلب</th><th>إجراءات</th></tr>';
+                if (requests.length === 0) html += '<tr><td colspan="7">لا توجد طلبات معينة</td></tr>';
+                requests.forEach(r => {
+                    html += `<tr>
+                        <td>${r.hospital_name}</td>
+                        <td>${r.device_name}</td>
+                        <td>${r.title}</td>
+                        <td>${r.status}</td>
+                        <td>${r.urgency}</td>
+                        <td>${new Date(r.created_at).toLocaleDateString('ar-EG')}</td>
+                        <td>
+                            ${r.status === 'assigned' ? `<button class="btn btn-warning" onclick="openStatusModal(${r.id})">بدء التنفيذ</button>` : ''}
+                            ${r.status === 'in_progress' ? `<button class="btn btn-warning" onclick="openStatusModal(${r.id})">تحديد كمكتمل</button>` : ''}
+                        </td>
+                    </tr>`;
+                });
+                html += '</table>';
+                document.getElementById('myRequestsList').innerHTML = html;
+            } catch (err) {
+                document.getElementById('myRequestsList').innerHTML = '<div class="error">فشل تحميل الطلبات</div>';
+            }
+        }
+
+        // تحميل عروض المهندس
+        async function loadMyBids() {
+            try {
+                const res = await fetch('/api/bids/engineer', { headers: { 'Authorization': `Bearer ${token}` } });
+                const bids = await res.json();
+                let html = '<table><tr><th>الطلب</th><th>السعر</th><th>الأيام</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th></tr>';
+                if (bids.length === 0) html += '<tr><td colspan="6">لا توجد عروض مقدمة</td></tr>';
+                bids.forEach(b => {
+                    html += `<tr>
+                        <td>طلب رقم ${b.request_id}</td>
+                        <td>${b.price}</td>
+                        <td>${b.estimated_days}</td>
+                        <td>${b.status}</td>
+                        <td>${new Date(b.created_at).toLocaleDateString('ar-EG')}</td>
+                        <td>
+                            ${b.status === 'pending' ? `<button class="btn btn-danger" onclick="withdrawBid(${b.id})">سحب العرض</button>` : ''}
+                        </td>
+                    </tr>`;
+                });
+                html += '</table>';
+                document.getElementById('myBidsList').innerHTML = html;
+            } catch (err) {
+                document.getElementById('myBidsList').innerHTML = '<div class="error">فشل تحميل العروض</div>';
+            }
+        }
+
+        // تقديم عرض
+        function openBidModal(requestId) {
+            document.getElementById('bid_request_id').value = requestId;
+            document.getElementById('bidModal').style.display = 'block';
+        }
+
+        function closeBidModal() {
+            document.getElementById('bidModal').style.display = 'none';
+        }
+
+        document.getElementById('bidForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const bidData = {
+                request_id: document.getElementById('bid_request_id').value,
+                price: document.getElementById('bid_price').value,
+                estimated_days: document.getElementById('bid_estimated_days').value,
+                description: document.getElementById('bid_description').value
+            };
+            try {
+                const res = await fetch('/api/bids', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bidData)
+                });
+                if (res.ok) {
+                    alert('تم تقديم العرض بنجاح');
+                    closeBidModal();
+                    loadOpenRequests();
+                    loadMyBids();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'فشل تقديم العرض');
+                }
+            } catch (err) {
+                alert('خطأ في الاتصال');
+            }
+        });
+
+        // سحب عرض
+        async function withdrawBid(bidId) {
+            if (!confirm('هل أنت متأكد من سحب هذا العرض؟')) return;
+            try {
+                const res = await fetch(`/api/bids/${bidId}/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    loadMyBids();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'فشل سحب العرض');
+                }
+            } catch (err) {
+                alert('خطأ في الاتصال');
+            }
+        }
+
+        // تحديث حالة الطلب
+        function openStatusModal(requestId) {
+            document.getElementById('status_request_id').value = requestId;
+            document.getElementById('statusModal').style.display = 'block';
+        }
+
+        function closeStatusModal() {
+            document.getElementById('statusModal').style.display = 'none';
+        }
+
+        document.getElementById('statusForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const requestId = document.getElementById('status_request_id').value;
+            const newStatus = document.getElementById('new_status').value;
+            try {
+                const res = await fetch(`/api/requests/${requestId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (res.ok) {
+                    alert('تم تحديث الحالة');
+                    closeStatusModal();
+                    loadMyRequests();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'فشل التحديث');
+                }
+            } catch (err) {
+                alert('خطأ في الاتصال');
+            }
+        });
+
+        // الإشعارات
+        async function loadNotifications() {
+            try {
+                const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+                const notifs = await res.json();
+                let html = '';
+                if (notifs.length === 0) html = '<p>لا توجد إشعارات</p>';
+                else {
+                    html = '<ul style="list-style: none; padding: 0;">';
+                    notifs.forEach(n => {
+                        html += `<li style="background: ${n.is_read ? '#f0f0f0' : '#fff3cd'}; margin: 10px 0; padding: 10px; border-radius: 5px;">
+                            <strong>${n.type}</strong> - ${n.message} <br>
+                            <small>${new Date(n.created_at).toLocaleString('ar-EG')}</small>
+                            ${!n.is_read ? `<button class="btn" onclick="markNotificationRead(${n.id})">تحديد كمقروء</button>` : ''}
+                        </li>`;
+                    });
+                    html += '</ul>';
+                }
+                document.getElementById('notificationsList').innerHTML = html;
+
+                const unread = notifs.filter(n => !n.is_read).length;
+                const notifCountSpan = document.getElementById('notifCount');
+                if (unread > 0) {
+                    notifCountSpan.innerText = unread;
+                    notifCountSpan.style.display = 'inline';
+                } else {
+                    notifCountSpan.style.display = 'none';
+                }
+            } catch (err) {
+                document.getElementById('notificationsList').innerHTML = '<div class="error">فشل تحميل الإشعارات</div>';
+            }
+        }
+
+        async function markNotificationRead(id) {
+            try {
+                await fetch(`/api/notifications/${id}/read`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                loadNotifications();
+            } catch (err) {
+                alert('فشل تحديث الإشعار');
+            }
+        }
+
+        // تحميل البيانات
+        loadOpenRequests();
+        loadMyRequests();
+        loadMyBids();
+        loadNotifications();
+        setInterval(loadNotifications, 30000);
+    </script>
+</body>
+</html>

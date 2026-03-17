@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل جديد</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div class="card" style="max-width: 500px; margin: 50px auto;">
+            <h2 style="text-align: center;">إنشاء حساب جديد</h2>
+            
+            <form id="registerForm">
+                
+                <div class="form-group">
+                    <label for="email">البريد الإلكتروني</label>
+                    <input type="email" id="email" placeholder="أدخل البريد الإلكتروني" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">كلمة المرور</label>
+                    <input type="password" id="password" placeholder="أدخل كلمة المرور" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">نوع الحساب</label>
+                    <select id="role" required>
+                        <option value="">اختر الدور</option>
+                        <option value="hospital">مستشفى / منشأة طبية</option>
+                        <option value="engineer">مهندس صيانة</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-success" style="width: 100%;">تسجيل</button>
+            </form>
+            
+            <p style="text-align: center; margin-top: 15px;">
+                لديك حساب؟ <a href="login.html">تسجيل الدخول</a>
+            </p>
+            
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+            const errorDiv = document.getElementById('error');
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, role })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    errorDiv.style.display = 'none';
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('role', data.role);
+                    
+                    // التوجيه لإكمال الملف الشخصي بناءً على الدور
+                    if (data.role === 'hospital') {
+                        window.location.href = 'complete-hospital-profile.html';
+                    } else if (data.role === 'engineer') {
+                        window.location.href = 'complete-engineer-profile.html';
+                    }
+                } else {
+                    errorDiv.style.display = 'block';
+                    errorDiv.innerText = data.error || 'حدث خطأ أثناء التسجيل';
+                }
+            } catch (err) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = 'حدث خطأ في الاتصال بالخادم';
+            }
+        });
+    </script>
+</body>
+</html>

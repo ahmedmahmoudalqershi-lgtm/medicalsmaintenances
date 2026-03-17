@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div class="card" style="max-width: 500px; margin: 50px auto;">
+            <h2 style="text-align: center;">تسجيل الدخول</h2>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">البريد الإلكتروني</label>
+                    <input type="email" id="email" placeholder="أدخل بريدك الإلكتروني" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">كلمة المرور</label>
+                    <input type="password" id="password" placeholder="أدخل كلمة المرور" required>
+                </div>
+                
+                <button type="submit" class="btn btn-success" style="width: 100%;">دخول</button>
+            </form>
+            
+            <p style="text-align: center; margin-top: 15px;">
+                ليس لديك حساب؟ <a href="register.html">سجل الآن</a>
+            </p>
+            
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    errorDiv.style.display = 'none';
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('role', data.role);
+                    // توجيه حسب الدور
+                    if (data.role === 'hospital') window.location.href = 'dashboard-hospital.html';
+                    else if (data.role === 'engineer') window.location.href = 'dashboard-engineer.html';
+                    else if (data.role === 'admin') window.location.href = 'dashboard-admin.html';
+                } else {
+                    errorDiv.style.display = 'block';
+                    errorDiv.innerText = data.error || 'خطأ في بيانات الدخول';
+                }
+            } catch (err) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = 'حدث خطأ في الاتصال بالخادم';
+            }
+        });
+    </script>
+</body>
+</html>
