@@ -7,7 +7,6 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
 const SECRET_KEY = 'your-secret-key-change-it'; // يجب تخزينها في متغير بيئي في الإنتاج
 
 // Middleware
@@ -1020,11 +1019,13 @@ app.use(express.static('public'));
 
 
 // ابحث عن السطر الذي يبدأ بـ app.listen واستبدله بهذا:
+// استبدل الجزء الأخير من ملفك بهذا الكود
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
 
 
 
